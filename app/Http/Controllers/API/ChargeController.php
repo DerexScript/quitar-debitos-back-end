@@ -17,7 +17,7 @@ class ChargeController extends BaseController
      */
     public function index()
     {
-        return Auth::User()->charges;
+        return $this->sendResponse(Auth::User()->charges, 'Charges');
     }
 
     /**
@@ -50,7 +50,7 @@ class ChargeController extends BaseController
         $user = Auth::User();
         $charge = Charge::create($request->all());
         $charge->users()->attach($user, ["status" => "Creditor"]);
-        return $this->sendResponse($charge, 'Charge created successfully.');
+        return $this->sendResponse($charge, 'Charge created successfully.', 201);
     }
 
 
