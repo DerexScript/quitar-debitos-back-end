@@ -26,7 +26,9 @@ Route::prefix('v1')->middleware(['cors'])->group(function () {
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('charge')->group(function () {
             Route::get('/', [ChargeController::class, 'index']);
+            Route::get('/{charge}', [ChargeController::class, 'show']);
             Route::post('store', [ChargeController::class, 'store']);
+            Route::get('/installments/{charge}', [ChargeController::class, 'getInstallments']);
         });
     });
 });

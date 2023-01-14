@@ -7,6 +7,7 @@ use App\Models\Charge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class ChargeController extends BaseController
 {
@@ -43,6 +44,7 @@ class ChargeController extends BaseController
             'description' => 'required',
             'total_value' => 'required',
             'installments' => 'required',
+            'payment_day' => 'required'
         ]);
         if ($validator->fails()) {
             return $this->sendError('Error validation', $validator->errors());
@@ -72,6 +74,21 @@ class ChargeController extends BaseController
         //send-message
     }
 
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Charge  $charge
+     * @return \Illuminate\Http\Response
+     */
+    public function getInstallments(Charge $charge) {
+        $installments = [];
+        for($i = 1; $i < $charge->installments+1; $i++) {
+            $installments[] = ["installment_number" => $i, "value" => number_format($charge->total_value/$charge->installments,2, '.', ''), "due_date" => Carbon::now()->day($charge->payment_day)->addMonths($i)->toDateString()];
+        }
+        return $this->sendResponse($installments, 'installments', 200);
+    }
+
     /**
      * Display the specified resource.
      *
@@ -80,7 +97,7 @@ class ChargeController extends BaseController
      */
     public function show(Charge $charge)
     {
-        //
+        return $this->sendResponse($charge, 'Charges', 200);
     }
 
     /**

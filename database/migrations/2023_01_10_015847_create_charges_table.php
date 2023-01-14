@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('description');
             $table->decimal('total_value');
             $table->string('installments');
+            $table->string('payment_day');
             /*
             $table->unsignedBigInteger('creditor_id');
             $table->unsignedBigInteger('debtor_id');

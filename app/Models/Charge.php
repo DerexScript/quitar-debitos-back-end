@@ -19,6 +19,7 @@ class Charge extends Model
         'description',
         'total_value',
         'installments',
+        'payment_day'
     ];
 
     public function users()
