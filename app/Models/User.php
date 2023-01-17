@@ -45,6 +45,6 @@ class User extends Authenticatable
 
     public function charges()
     {
-        return $this->belongsToMany(Charge::class);
+        return $this->belongsToMany(Charge::class)->withPivot('status');
     }
 }

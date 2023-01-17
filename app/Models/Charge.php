@@ -18,12 +18,17 @@ class Charge extends Model
         'title',
         'description',
         'total_value',
-        'installments',
+        'number_of_installments',
         'payment_day'
     ];
 
     public function users()
     {
-        return $this->belongsToMany(User::class);
+        return $this->belongsToMany(User::class)->withPivot('status');
+    }
+
+    public function installments()
+    {
+        return $this->hasMany(Installment::class);
     }
 }

@@ -19,7 +19,7 @@ class BaseController extends Controller
             'data'    => $result,
             'message' => $message,
         ];
-        return response()->json($response, $status);
+        return response()->json($response, $status)->header('Accept', 'application/json');
     }
 
     /**

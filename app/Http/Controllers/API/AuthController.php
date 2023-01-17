@@ -4,9 +4,12 @@ namespace App\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\API\BaseController as BaseController;
+use App\Models\Charge;
+use App\Models\CollectionInvitation;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -43,7 +46,7 @@ class AuthController extends BaseController
         return $this->sendError('Unauthorized.', ['error' => 'Unauthorized'], 401);
     }
 
-    public function signup(Request $request)
+    public function signup(Request $request, $invitation_code = null)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required',
@@ -54,9 +57,29 @@ class AuthController extends BaseController
         if ($validator->fails()) {
             return $this->sendError('Error validation', $validator->errors());
         }
+        DB::beginTransaction();
+        $collectionInvitation = CollectionInvitation::where('invitation_code', $invitation_code)->where('status', true)->first();
+        if ($invitation_code !== null && $collectionInvitation) {
+            $collectionInvitation->status = false;
+            $isUpdated = $collectionInvitation->save();
+            if (!$isUpdated) {
+                return $this->sendError('Failed to change invite code status', ['message' => 'Failed to change invite code status']);
+            }
+        }
+        
+        if ($invitation_code !== null && !$collectionInvitation) {
+            return $this->sendError('Invalid invite code', ['message' => 'Invalid invite code']);
+        }
         $input = $request->all();
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
-        return $this->sendResponse($user, 'User created successfully.');
+        if ($invitation_code !== null && $collectionInvitation) {
+            $charge = Charge::where('id', $collectionInvitation->charge_id)->first()->loadMissing(['users']);
+            if(count($charge->users) < 2){
+                $user->charges()->attach($charge, ["status" => "Debtor"]);
+            }
+        }
+        DB::commit();
+        return $this->sendResponse($user, 'User created successfully.', 201);
     }
 }
