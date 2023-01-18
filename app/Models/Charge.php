@@ -31,4 +31,9 @@ class Charge extends Model
     {
         return $this->hasMany(Installment::class);
     }
+
+    public function collectionInvitations()
+    {
+        return $this->hasMany(CollectionInvitation::class);
+    }
 }

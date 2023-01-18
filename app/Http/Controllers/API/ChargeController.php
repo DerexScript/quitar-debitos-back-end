@@ -90,44 +90,51 @@ class ChargeController extends BaseController
             'email' => 'required',
             'charge_id' => 'required'
         ]);
+
         if ($validator->fails()) {
             return $this->sendError('Error validation', $validator->errors());
         }
-
-        /*
-        // ignore users registred
-        $isUser = User::where('email', $request->email)->first();
-        if($isUser) {
-            return $this->sendError('This user is already registered in our system', ['message' => 'This user is already registered in our system']);
-        }
-        */
 
         $billingParticipants = Auth::user()->charges->loadMissing(['users'])->find($request->charge_id);
         if (!$billingParticipants || count($billingParticipants->users) > 1) {
             return $this->sendError('This collection does not exist or already has a creditor and debtor', ['message' => 'This collection does not exist or already has a creditor and debtor']);
         }
-        return $billingParticipants;
 
-        $user = Auth::user();
         $inviteCode = Str::uuid()->toString();
-
         $collectionInvitation = new CollectionInvitation();
         $collectionInvitation->invitation_code = $inviteCode;
         $collectionInvitation->charge_id = $request->charge_id;
         $collectionInvitation->email = $request->email;
         $inviteSaved = $collectionInvitation->save();
-
         if (!$inviteSaved) {
             return $this->sendError('error creating invitation', ['message' => 'error creating invitation'], 500);
         }
 
-        $template = <<<EOF
-        <h2>Olá {$request->email}</h2>
-        <p>Você foi convidado por {$user->name}, para uma cobrança aberta em nosso sistema.</p>
-        <p>Visite esse link <a src='http://localhost:3000/register/{$inviteCode}'>http://localhost:3000/register/{$inviteCode}</a>, para se registrar em nosso sistema e participar da cobrança.</p>
-        Obrigado,<br>
-        &copy; Copyright 2023, Quitar-Debitos Corporation
-        EOF;
+        //
+        $isUser = User::where('email', $request->email)->first();
+        $user = Auth::user();
+
+        $template = "";
+        if ($isUser) {
+            // return $this->sendError('This user is already registered in our system', ['message' => 'This user is already registered in our system']);
+            $template = <<<EOF
+            <h2>Olá {$request->email}</h2>
+            <p>Você foi convidado por {$user->name}, para uma cobrança aberta em nosso sistema.</p>
+            <p>Visite o link abaixo, para participar da cobrança.</p>
+            <p><a src='http://localhost:3000/charge/invitation/{$inviteCode}'>http://localhost:3000/charge/invitation/{$inviteCode}</a></p>
+            Obrigado,<br>
+            &copy; Copyright 2023, Quitar-Debitos Corporation
+            EOF;
+        } else {
+            $template = <<<EOF
+            <h2>Olá {$request->email}</h2>
+            <p>Você foi convidado por {$user->name}, para uma cobrança aberta em nosso sistema.</p>
+            <p>Visite o link abaixo, para se registrar em nosso sistema e participar da cobrança.</p>
+            <p><a src='http://localhost:3000/register/{$inviteCode}'>http://localhost:3000/register/{$inviteCode}</a></p>
+            Obrigado,<br>
+            &copy; Copyright 2023, Quitar-Debitos Corporation
+            EOF;
+        }
 
         try {
             Mail::to($request->email)->send(new SendMail($template));
@@ -135,6 +142,37 @@ class ChargeController extends BaseController
         } catch (\Exception $e) {
             return $this->sendError('Error sending email', ['message' => $e->getMessage()], 502);
         }
+    }
+
+
+    /**
+     * Accept debtor invitation
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function acceptDebtorInvitation(Request $request, $invitation_code)
+    {
+        DB::beginTransaction();
+
+        $collectionInvitation = CollectionInvitation::where('invitation_code', $invitation_code)->where('status', true)->first();
+        if (!$collectionInvitation) {
+            return $this->sendError('Invitation does not exist', ['message' => 'Invitation does not exist'], 404);
+        }
+        $collectionInvitation->status = false;
+        $isUpdated = $collectionInvitation->save();
+        if (!$isUpdated) {
+            return $this->sendError('Failed to change invite code status', ['message' => 'Failed to change invite code status']);
+        }
+
+        $user = User::where('email', $collectionInvitation->email)->first();
+        if (!$user) {
+            return $this->sendError('we can\'t find the guest user', ['message' => 'we can\'t find the guest user']);
+        }
+
+        $user->charges()->attach($collectionInvitation->charge, ["status" => "Debtor"]);
+        DB::commit();
+        return $this->sendResponse('invitation accepted successfully', 'invitation accepted successfully.', 200);
     }
 
     /**
