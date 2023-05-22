@@ -21,4 +21,9 @@ class Installment extends Model
     {
         return $this->belongsTo(Charge::class);
     }
+
+    public function confirmPayments()
+    {
+        return $this->hasMany(ConfirmPayment::class);
+    }
 }

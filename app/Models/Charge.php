@@ -36,4 +36,9 @@ class Charge extends Model
     {
         return $this->hasMany(CollectionInvitation::class);
     }
+
+    public function confirmPayments()
+    {
+        return $this->hasManyThrough(ConfirmPayment::class, Installment::class);
+    }
 }

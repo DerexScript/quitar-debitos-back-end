@@ -183,9 +183,8 @@ class ChargeController extends BaseController
      */
     public function show(Charge $charge)
     {
-
         return $this->sendResponse(
-            Auth::user()->charges->loadMissing(['installments', 'users'])->find($charge->id),
+            Auth::user()->charges->loadMissing(['installments', 'users', 'confirmPayments'])->find($charge->id),
             'Charge',
             200
         );
